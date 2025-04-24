@@ -444,7 +444,7 @@ class MainActivity : ComponentActivity() {
 //        super.onDestroy()
 //        disconnectWebSocket()
 //        stopPlayback()
-//    }
+//    }　
 
     inner class MyObserver : DefaultLifecycleObserver {
         override fun onResume(owner: LifecycleOwner) {
