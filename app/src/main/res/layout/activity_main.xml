@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal">
+
+    <!-- 上部の画像 -->
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:src="@drawable/hutuu"
+        android:contentDescription="Image" />
+
+    <!-- お便り入力 -->
+    <EditText
+        android:id="@+id/editTextOtayori"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:hint="お便り"
+        android:gravity="top"
+        android:background="@android:drawable/edit_text"
+        android:inputType="textMultiLine"
+        android:minLines="5"
+        android:layout_marginTop="16dp" />
+
+    <!-- 送信ボタン -->
+    <Button
+        android:id="@+id/buttonSend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="送信"
+        android:layout_marginTop="8dp" />
+
+    <!-- ステータス表示 -->
+    <TextView
+        android:id="@+id/textViewStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="待機中"
+        android:layout_marginTop="8dp" />
+
+    <!-- BGM再生ボタン（再生処理は Kotlin 側） -->
+    <Button
+        android:id="@+id/buttonPlayBGM"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="BGM再生"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>
