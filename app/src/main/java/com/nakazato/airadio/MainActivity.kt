@@ -1,7 +1,10 @@
 package com.nakazato.airadio
 
 import android.app.AlertDialog
+import android.content.Context
+import android.content.pm.PackageManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.widget.*
@@ -13,10 +16,19 @@ import java.util.concurrent.TimeUnit
 
 import android.os.Handler
 import android.os.Looper
+import android.telephony.PhoneStateListener
+import android.telephony.TelephonyCallback
+import android.telephony.TelephonyManager
 import android.util.Log
+import android.view.WindowManager
 import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -33,6 +45,7 @@ import java.util.LinkedList
 import java.util.Queue
 
 
+@RequiresApi(Build.VERSION_CODES.S)
 class MainActivity : ComponentActivity() {
 
     private val MIN_BUFFER_SIZE = 2 * 1024 * 1024 // 最小バッファサイズ（1M）
@@ -48,7 +61,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var client: OkHttpClient
     private lateinit var socketSend: WebSocket
-    private val SERVER_HOST = "wss://bekondaisuki.zapto.org"
+    private val SERVER_HOST = "wss://x162-43-31-224.static.xvps.ne.jp"
     private val PORT_SEND = 9540
     private val NOTIF_PORT = 9541
 //    private val FILE_PORT = 9542
@@ -76,6 +89,12 @@ class MainActivity : ComponentActivity() {
 
     private val audioQueue: Queue<File> = LinkedList()
     private var isPlaying = false
+
+    private lateinit var telephonyManager: TelephonyManager
+
+    val audioAttributes = AudioAttributes.Builder()
+        .setUsage(C.USAGE_MEDIA) // 通常の音楽・メディア用途
+        .build()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,9 +133,17 @@ class MainActivity : ComponentActivity() {
         tempFile = File(cacheDir, "temp_audio.mp3")
 
         // Wake Lockの取得
-//        requestWakeLock()
+        // WakeLock の取得
+//        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+//        wakeLock = powerManager.newWakeLock(
+//            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+//            "MyApp::MyWakeLockTag"
+//        )
 
-        connectWebSocket()
+        // 画面を手動でオンのままにする
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+//        connectWebSocket()
 //        notifSocket.connect("$SERVER_HOST:$NOTIF_PORT/ws/")
 
 //        audioManager = AudioPlayerManager(this)
@@ -193,6 +220,7 @@ class MainActivity : ComponentActivity() {
 
         disconnectWebSocket()
         stopPlayback()
+
     }
 
     /**
@@ -202,7 +230,7 @@ class MainActivity : ComponentActivity() {
         client = OkHttpClient.Builder()
             .readTimeout(0, TimeUnit.MILLISECONDS)
 //            .connectTimeout(10, TimeUnit.SECONDS) // クライアントとサーバーが接続する時、相手から応答があるまで何ミリ秒待つのか？を設定できます。設定した時間内に応答がない場合は接続が終了します。
-            .pingInterval(15, TimeUnit.SECONDS) // 15秒ごとにping送信
+//            .pingInterval(15, TimeUnit.SECONDS) // 15秒ごとにping送信
             .build()
 
         val request = Request.Builder()
@@ -230,7 +258,7 @@ class MainActivity : ComponentActivity() {
                     textViewStatus.text = "WebSocket onFailure: ${t.message}"
                 }
                 Log.d("connectWebSocket", "WebSocket error: ${t.message}".toByteArray(Charsets.UTF_8).toString(Charsets.UTF_8))
-                connectWebSocket() // 再接続
+//                connectWebSocket() // 再接続
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -288,24 +316,26 @@ class MainActivity : ComponentActivity() {
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                isWebSocketConnected = false
                 Log.d(TAG, "onClosed: WebSocket切断: code=$code, reason=$reason")
                 textViewStatus.text = "onClosed: WebSocket切断: code=$code, reason=$reason"
-                isWebSocketConnected = false
-                mainHandler.post { stopPlayback() }
+//                mainHandler.post { stopPlayback() }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
+                isWebSocketConnected = false
+//                webSocket.close(1000,"onFailure")
+
                 Log.e(TAG, "onFailure: WebSocketエラー", t)
                 mainHandler.post { textViewStatus.text = "onFailure: WebSocketエラー" }
-                isWebSocketConnected = false
-                mainHandler.post { stopPlayback() }
+//                mainHandler.post { stopPlayback() }
 //                if (lifecycle.currentState.isAtLeast(LifecycleOwner::getLifecycle().currentState)) {
 //                    Log.d(TAG, "onFailure: 5秒後に再接続を試行")
 //                    Thread.sleep(5000)
 //                    connectWebSocket()
 //                }
                 Thread.sleep(5000)
-//                connectWebSocket()
+                connectWebSocket()
             }
         })
     }
@@ -369,6 +399,10 @@ class MainActivity : ComponentActivity() {
                         prepare()
                         playWhenReady = true
                         Log.d(TAG, "startPlayback: 再生開始")
+
+                        // 電話等かきたら音声再生を一時停止する
+                        setAudioAttributes(audioAttributes, /* handleAudioFocus= */ true)
+
                         addListener(object : Player.Listener {
                             override fun onPlaybackStateChanged(state: Int) {
                                 when (state) {
@@ -463,4 +497,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
     }
+
+
+
 }
